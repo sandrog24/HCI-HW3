@@ -34,11 +34,14 @@ def api_post(path, data):
         ui.notify(f"Could not reach API: {e}", type="negative")
         return False
 
-# TODO: Create api_delete function that attempts to send a DELETE request to the API.
-# The request method should use the string f"{API_URL}{path}/{id}" to access the correct path,
-# where id refers to the id number of the question to be deleted. 
 def api_delete(path, id):
-    pass
+    try:
+        response = requests.delete(f"{API_URL}{path}/{id}", timeout=5)
+        response.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        ui.notify(f"Could not delete question: {e}", type="negative")
+        return False
 
 # TODO: Create api_put function that attempts to send a PUT request to the API.
 # The request method should use the string f"{API_URL}{path}/{id}" to access the correct path,
@@ -48,15 +51,21 @@ def api_delete(path, id):
 def api_put(path, id, data):
     pass
 
-# TODO: Add edit and delete buttons dynamically to each question card. 
+# TODO: Add an edit button to each question card.
 def render_question(question):
     with ui.card() as card:
-        card.on("click", lambda: toggle_answer(question["id"]))
+        card.on("click", lambda: toggle_answer(question))
         ui.label(question["q"])
         ui.label(question["a"]).classes("text-s text-green font-bold").bind_visibility_from(question["state"], "show_answer")
+        ui.button("Delete", color="negative").on(
+            "click.stop", lambda: delete_question(question["id"]))
 
-def toggle_answer(i):
-    questions[i]["state"]["show_answer"] = not questions[i]["state"]["show_answer"]
+def toggle_answer(question):
+    question["state"]["show_answer"] = not question["state"]["show_answer"]
+
+def delete_question(id):
+    if api_delete("/delete", id):
+        render_page()
 
 def add_new_question(question, answer):
     api_post("/add", {"question": question, "answer": answer})
