@@ -43,22 +43,44 @@ def api_delete(path, id):
         ui.notify(f"Could not delete question: {e}", type="negative")
         return False
 
-# TODO: Create api_put function that attempts to send a PUT request to the API.
-# The request method should use the string f"{API_URL}{path}/{id}" to access the correct path,
-# where id refers to the id number of the question to be deleted. The data passed as an argument
-# to this function must be sent with the request so that the API knows the updated values to add 
-# to the dataset (similar to how data is sent in api_post).
 def api_put(path, id, data):
-    pass
+    try:
+        response = requests.put(f"{API_URL}{path}/{id}", json=data, timeout=5)
+        response.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        ui.notify(f"Could not update question: {e}", type="negative")
+        return False
 
-# TODO: Add an edit button to each question card.
 def render_question(question):
     with ui.card() as card:
         card.on("click", lambda: toggle_answer(question))
         ui.label(question["q"])
         ui.label(question["a"]).classes("text-s text-green font-bold").bind_visibility_from(question["state"], "show_answer")
-        ui.button("Delete", color="negative").on(
-            "click.stop", lambda: delete_question(question["id"]))
+        with ui.row():
+            ui.button("Edit").on("click.stop", lambda: edit_question(question))
+            ui.button("Delete", color="negative").on(
+                "click.stop", lambda: delete_question(question["id"]))
+
+def edit_question(question):
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-lg"):
+        ui.label("Edit question")
+        new_q = ui.textarea(label="Question", value=question["q"]).classes("w-full")
+        new_a = ui.textarea(label="Answer", value=question["a"]).classes("w-full")
+
+        def update_question():
+            if api_put("/update", question["id"], {
+                "question": new_q.value,
+                "answer": new_a.value
+            }):
+                dialog.close()
+                render_page()
+
+        with ui.row():
+            ui.button("Update question", on_click=update_question)
+            ui.button("Cancel", on_click=dialog.close).props("flat")
+    dialog.on("hide", dialog.delete)
+    dialog.open()
 
 def toggle_answer(question):
     question["state"]["show_answer"] = not question["state"]["show_answer"]
