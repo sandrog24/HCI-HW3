@@ -4,7 +4,9 @@ import requests
 API_URL = "http://localhost:8005"
 
 questions = []
-page_body = ui.column()
+ui.colors(primary="#1d4ed8", negative="#b91c1c")
+ui.query("body").classes("bg-slate-100 text-slate-900")
+page_body = ui.column().classes("w-full max-w-3xl mx-auto gap-6 py-6")
 
 def api_get(path):
     try:
@@ -53,20 +55,29 @@ def api_put(path, id, data):
         return False
 
 def render_question(question):
-    with ui.card() as card:
+    with ui.card().classes("w-full p-5 gap-4 rounded-xl border border-slate-200 shadow-sm") as card:
         card.on("click", lambda: toggle_answer(question))
-        ui.label(question["q"])
-        ui.label(question["a"]).classes("text-s text-green font-bold").bind_visibility_from(question["state"], "show_answer")
-        with ui.row():
-            ui.button("Edit").on("click.stop", lambda: edit_question(question))
-            ui.button("Delete", color="negative").on(
-                "click.stop", lambda: delete_question(question["id"]))
+        ui.label(question["q"]).classes("text-lg font-semibold leading-relaxed")
+        with ui.column().classes("w-full bg-blue-50 border-l-4 border-blue-700 p-4 gap-1 rounded") as answer:
+            answer.bind_visibility_from(question["state"], "show_answer")
+            ui.label("Answer").classes("text-sm font-semibold text-blue-800")
+            ui.label(question["a"]).classes("text-base leading-relaxed whitespace-pre-wrap")
+        with ui.row().classes("w-full items-center justify-between gap-2"):
+            ui.button(icon="visibility").props("flat no-caps").bind_text_from(
+                question["state"], "show_answer",
+                backward=lambda shown: "Hide answer" if shown else "Show answer"
+            ).on("click.stop", lambda: toggle_answer(question))
+            with ui.row().classes("gap-2"):
+                ui.button("Edit", icon="edit").props("outline no-caps").on(
+                    "click.stop", lambda: edit_question(question))
+                ui.button("Delete", icon="delete", color="negative").props("flat no-caps").on(
+                    "click.stop", lambda: delete_question(question["id"]))
 
 def edit_question(question):
-    with ui.dialog() as dialog, ui.card().classes("w-full max-w-lg"):
-        ui.label("Edit question")
-        new_q = ui.textarea(label="Question", value=question["q"]).classes("w-full")
-        new_a = ui.textarea(label="Answer", value=question["a"]).classes("w-full")
+    with ui.dialog() as dialog, ui.card().classes("w-full max-w-lg p-6 gap-4 rounded-xl"):
+        ui.label("Edit question").classes("text-2xl font-bold")
+        new_q = ui.textarea(label="Question", value=question["q"]).props("outlined").classes("w-full")
+        new_a = ui.textarea(label="Answer", value=question["a"]).props("outlined").classes("w-full")
 
         def update_question():
             if api_put("/update", question["id"], {
@@ -76,9 +87,9 @@ def edit_question(question):
                 dialog.close()
                 render_page()
 
-        with ui.row():
-            ui.button("Update question", on_click=update_question)
-            ui.button("Cancel", on_click=dialog.close).props("flat")
+        with ui.row().classes("w-full justify-end gap-2"):
+            ui.button("Cancel", on_click=dialog.close).props("flat no-caps")
+            ui.button("Update question", on_click=update_question).props("unelevated no-caps")
     dialog.on("hide", dialog.delete)
     dialog.open()
 
@@ -94,12 +105,14 @@ def add_new_question(question, answer):
     render_page()
 
 def render_text_inputs():
-    new_question_input = ui.input(label="New question").props("clearable")
-    new_answer_input = ui.input(label="New answer").props("clearable")
-    add_question_btn = ui.button(text="Add question", on_click=lambda: add_new_question(
-        question=new_question_input.value,
-        answer=new_answer_input.value
-    ))
+    with ui.card().classes("w-full p-6 gap-4 rounded-xl border border-slate-200 shadow-sm"):
+        ui.label("Add a question").classes("text-xl font-bold")
+        new_question_input = ui.input(label="New question").props("outlined clearable").classes("w-full")
+        new_answer_input = ui.input(label="New answer").props("outlined clearable").classes("w-full")
+        ui.button(text="Add question", icon="add", on_click=lambda: add_new_question(
+            question=new_question_input.value,
+            answer=new_answer_input.value
+        )).props("unelevated no-caps")
 
 def init_page():
     render_page()
@@ -109,6 +122,10 @@ def render_page():
     questions = api_get("/questions")
     page_body.clear()
     with page_body:
+        with ui.column().classes("gap-1"):
+            ui.label("HCI Review").classes("text-3xl font-bold")
+            ui.label("Test your recall. Tap a question or choose Show answer to check it.").classes("text-base text-slate-600")
+        ui.label("Review questions").classes("text-xl font-bold")
         for question in questions:
             question["state"] = {"show_answer": False}
             render_question(question)
